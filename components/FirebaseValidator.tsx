@@ -1,18 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { 
-  CheckCircle, 
-  XCircle, 
-  Loader, 
-  Database, 
-  MessageCircle, 
-  Bell, 
-  Users,
-  BarChart3,
-  Shield,
-  Wifi
-} from 'lucide-react-native';
+import { CircleCheck as CheckCircle, Circle as XCircle, Loader, Database, MessageCircle, Bell, Users, ChartBar as BarChart3, Shield, Wifi } from 'lucide-react-native';
 import { auth, db, realtimeDb, analytics } from '../config/firebase';
 import { useFirebaseAuth } from '../contexts/FirebaseAuthContext';
 import FirebaseService from '../services/firebaseService';
