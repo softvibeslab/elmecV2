@@ -4,9 +4,9 @@ import { StatusBar } from 'expo-status-bar';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold } from '@expo-google-fonts/inter';
 import * as SplashScreen from 'expo-splash-screen';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { ChatProvider } from '@/contexts/ChatContext';
+import { FirebaseAuthProvider } from '@/contexts/FirebaseAuthContext';
+import { FirebaseNotificationProvider } from '@/contexts/FirebaseNotificationContext';
+import { FirebaseChatProvider } from '@/contexts/FirebaseChatContext';
 import { NotificationManager } from '@/components/NotificationToast';
 
 SplashScreen.preventAutoHideAsync();
@@ -32,9 +32,9 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <NotificationProvider>
-        <ChatProvider>
+    <FirebaseAuthProvider>
+      <FirebaseNotificationProvider>
+        <FirebaseChatProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="auth" options={{ headerShown: false }} />
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -42,8 +42,8 @@ export default function RootLayout() {
           </Stack>
           <StatusBar style="auto" />
           <NotificationManager />
-        </ChatProvider>
-      </NotificationProvider>
-    </AuthProvider>
+        </FirebaseChatProvider>
+      </FirebaseNotificationProvider>
+    </FirebaseAuthProvider>
   );
 }
