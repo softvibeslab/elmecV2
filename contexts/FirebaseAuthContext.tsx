@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { auth } from '../config/firebase';
 import FirebaseService from '../services/firebaseService';
@@ -33,15 +33,22 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const mounted = useRef(false);
 
   useEffect(() => {
+    mounted.current = true;
+    
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (!mounted.current) return;
+      
       setCurrentUser(user);
       
       if (user) {
         // Get user profile from Firestore
         const profile = await FirebaseService.getUserInfo(user.uid);
-        setUserProfile(profile);
+        if (mounted.current) {
+          setUserProfile(profile);
+        }
         
         // Track login event
         await FirebaseService.trackEvent('user_login', {
@@ -49,31 +56,46 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
           method: 'email'
         });
       } else {
-        setUserProfile(null);
+        if (mounted.current) {
+          setUserProfile(null);
+        }
       }
       
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+      }
     });
 
-    return unsubscribe;
+    return () => {
+      mounted.current = false;
+      unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
+    if (!mounted.current) return Promise.reject(new Error('Component unmounted'));
     setLoading(true);
     try {
       const user = await FirebaseService.loginUser(email, password);
-      setUserProfile(user);
+      if (mounted.current) {
+        setUserProfile(user);
+      }
       return user;
     } finally {
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   const register = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
+    if (!mounted.current) return Promise.reject(new Error('Component unmounted'));
     setLoading(true);
     try {
       const user = await FirebaseService.registerUser(userData);
-      setUserProfile(user);
+      if (mounted.current) {
+        setUserProfile(user);
+      }
       
       // Track registration event
       await FirebaseService.trackEvent('user_register', {
@@ -84,11 +106,14 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
       
       return user;
     } finally {
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   const logout = async (): Promise<void> => {
+    if (!mounted.current) return;
     setLoading(true);
     try {
       if (currentUser) {
@@ -99,17 +124,23 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
       }
       
       await FirebaseService.logoutUser();
-      setUserProfile(null);
+      if (mounted.current) {
+        setUserProfile(null);
+      }
     } finally {
-      setLoading(false);
+      if (mounted.current) {
+        setLoading(false);
+      }
     }
   };
 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
-    if (!currentUser || !userProfile) return;
+    if (!mounted.current || !currentUser || !userProfile) return;
     
     await FirebaseService.updateUser(currentUser.uid, updates);
-    setUserProfile({ ...userProfile, ...updates });
+    if (mounted.current) {
+      setUserProfile({ ...userProfile, ...updates });
+    }
   };
 
   const value: AuthContextType = {

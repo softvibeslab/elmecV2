@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
@@ -46,25 +46,40 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [notificationSubscription, setNotificationSubscription] = useState<(() => void) | null>(null);
+  const mounted = useRef(false);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
+    mounted.current = true;
+    
     if (currentUser) {
       requestPermission();
       const unsubscribe = subscribeToNotifications();
-      return unsubscribe;
+      return () => {
+        mounted.current = false;
+        unsubscribe();
+      };
     } else {
       // Clean up subscription when user logs out
       if (notificationSubscription) {
         notificationSubscription();
-        setNotificationSubscription(null);
+        if (mounted.current) {
+          setNotificationSubscription(null);
+        }
       }
-      setNotifications([]);
+      if (mounted.current) {
+        setNotifications([]);
+      }
+      return () => {
+        mounted.current = false;
+      };
     }
   }, [currentUser]);
 
   const requestPermission = async (): Promise<boolean> => {
+    if (!mounted.current) return false;
+    
     try {
       if (Platform.OS === 'web') {
         // Web push notifications
@@ -81,6 +96,7 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
 
             // Listen for foreground messages
             onMessage(messaging, (payload) => {
+              if (!mounted.current) return;
               console.log('Foreground message received:', payload);
               // Handle foreground notifications
               if (payload.notification) {
@@ -129,11 +145,13 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
   };
 
   const subscribeToNotifications = (): (() => void) => {
-    if (!currentUser) {
+    if (!mounted.current || !currentUser) {
       return () => {};
     }
 
     const unsubscribe = FirebaseService.subscribeToNotifications(currentUser.uid, (newNotifications) => {
+      if (!mounted.current) return;
+      
       setNotifications(newNotifications);
       
       // Show notifications that haven't been sent yet
@@ -151,11 +169,15 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
       });
     });
 
-    setNotificationSubscription(() => unsubscribe);
+    if (mounted.current) {
+      setNotificationSubscription(() => unsubscribe);
+    }
     return unsubscribe;
   };
 
   const markAsRead = async (notificationId: string): Promise<void> => {
+    if (!mounted.current) return;
+    
     try {
       setNotifications(prev =>
         prev.map(notification =>
@@ -177,6 +199,8 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
   };
 
   const markAllAsRead = async (): Promise<void> => {
+    if (!mounted.current) return;
+    
     try {
       const timestamp = new Date().toISOString();
       setNotifications(prev =>
@@ -198,6 +222,8 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
   };
 
   const clearNotifications = async (): Promise<void> => {
+    if (!mounted.current) return;
+    
     try {
       setNotifications([]);
       
