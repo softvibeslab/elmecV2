@@ -46,35 +46,35 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [notificationSubscription, setNotificationSubscription] = useState<(() => void) | null>(null);
-  const mounted = useRef(false);
+  const mounted = useRef(true);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
   useEffect(() => {
-    mounted.current = true;
-    
-    if (currentUser) {
-      requestPermission();
-      const unsubscribe = subscribeToNotifications();
-      return () => {
-        mounted.current = false;
-        unsubscribe();
-      };
-    } else {
+    let unsubscribe: (() => void) | undefined;
+
+    if (currentUser && mounted.current) {
+      try {
+        requestPermission().catch(console.error);
+        unsubscribe = subscribeToNotifications();
+      } catch (error) {
+        console.error('Error setting up notifications:', error);
+      }
+    } else if (!currentUser && mounted.current) {
       // Clean up subscription when user logs out
       if (notificationSubscription) {
         notificationSubscription();
-        if (mounted.current) {
-          setNotificationSubscription(null);
-        }
+        setNotificationSubscription(null);
       }
-      if (mounted.current) {
-        setNotifications([]);
-      }
-      return () => {
-        mounted.current = false;
-      };
+      setNotifications([]);
     }
+
+    return () => {
+      mounted.current = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [currentUser]);
 
   const requestPermission = async (): Promise<boolean> => {
@@ -86,28 +86,33 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
         if (messaging) {
           const permission = await Notification.requestPermission();
           if (permission === 'granted') {
-            const token = await getToken(messaging, {
-              vapidKey: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY
-            });
-            
-            if (token && currentUser) {
-              await FirebaseService.updateFCMToken(currentUser.uid, token);
-            }
-
-            // Listen for foreground messages
-            onMessage(messaging, (payload) => {
-              if (!mounted.current) return;
-              console.log('Foreground message received:', payload);
-              // Handle foreground notifications
-              if (payload.notification) {
-                new Notification(payload.notification.title || 'Nueva notificación', {
-                  body: payload.notification.body,
-                  icon: '/assets/images/icon.png'
-                });
+            try {
+              const token = await getToken(messaging, {
+                vapidKey: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY
+              });
+              
+              if (token && currentUser && mounted.current) {
+                await FirebaseService.updateFCMToken(currentUser.uid, token);
               }
-            });
 
-            return true;
+              // Listen for foreground messages
+              onMessage(messaging, (payload) => {
+                if (!mounted.current) return;
+                console.log('Foreground message received:', payload);
+                // Handle foreground notifications
+                if (payload.notification) {
+                  new Notification(payload.notification.title || 'Nueva notificación', {
+                    body: payload.notification.body,
+                    icon: '/assets/images/icon.png'
+                  });
+                }
+              });
+
+              return true;
+            } catch (tokenError) {
+              console.error('Error getting FCM token:', tokenError);
+              return false;
+            }
           }
         }
         
@@ -128,10 +133,12 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
           finalStatus = status;
         }
 
-        if (finalStatus === 'granted') {
-          const token = (await Notifications.getExpoPushTokenAsync()).data;
-          if (currentUser) {
+        if (finalStatus === 'granted' && currentUser && mounted.current) {
+          try {
+            const token = (await Notifications.getExpoPushTokenAsync()).data;
             await FirebaseService.updateFCMToken(currentUser.uid, token);
+          } catch (tokenError) {
+            console.error('Error getting Expo push token:', tokenError);
           }
           return true;
         }
@@ -149,30 +156,39 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
       return () => {};
     }
 
-    const unsubscribe = FirebaseService.subscribeToNotifications(currentUser.uid, (newNotifications) => {
-      if (!mounted.current) return;
-      
-      setNotifications(newNotifications);
-      
-      // Show notifications that haven't been sent yet
-      newNotifications.forEach(async (notification) => {
-        if (!notification.sent && Platform.OS !== 'web') {
-          await Notifications.scheduleNotificationAsync({
-            content: {
-              title: notification.title,
-              body: notification.body,
-              data: notification.data || {}
-            },
-            trigger: null // Send immediately
-          });
-        }
+    try {
+      const unsubscribe = FirebaseService.subscribeToNotifications(currentUser.uid, (newNotifications) => {
+        if (!mounted.current) return;
+        
+        setNotifications(newNotifications);
+        
+        // Show notifications that haven't been sent yet
+        newNotifications.forEach(async (notification) => {
+          if (!notification.sent && Platform.OS !== 'web' && mounted.current) {
+            try {
+              await Notifications.scheduleNotificationAsync({
+                content: {
+                  title: notification.title,
+                  body: notification.body,
+                  data: notification.data || {}
+                },
+                trigger: null // Send immediately
+              });
+            } catch (error) {
+              console.error('Error scheduling notification:', error);
+            }
+          }
+        });
       });
-    });
 
-    if (mounted.current) {
-      setNotificationSubscription(() => unsubscribe);
+      if (mounted.current) {
+        setNotificationSubscription(() => unsubscribe);
+      }
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error subscribing to notifications:', error);
+      return () => {};
     }
-    return unsubscribe;
   };
 
   const markAsRead = async (notificationId: string): Promise<void> => {
@@ -188,10 +204,13 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
       );
 
       // Track notification interaction
-      await FirebaseService.trackEvent('notification_read', {
-        notificationId,
-        notificationType: notifications.find(n => n.id === notificationId)?.type
-      });
+      const notification = notifications.find(n => n.id === notificationId);
+      if (notification) {
+        FirebaseService.trackEvent('notification_read', {
+          notificationId,
+          notificationType: notification.type
+        }).catch(console.error);
+      }
 
     } catch (error) {
       console.error('Error marking notification as read:', error);
@@ -212,9 +231,9 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
       );
 
       // Track bulk read action
-      await FirebaseService.trackEvent('notifications_mark_all_read', {
+      FirebaseService.trackEvent('notifications_mark_all_read', {
         count: unreadCount
-      });
+      }).catch(console.error);
 
     } catch (error) {
       console.error('Error marking all notifications as read:', error);
@@ -228,9 +247,9 @@ export const FirebaseNotificationProvider: React.FC<NotificationProviderProps> =
       setNotifications([]);
       
       // Track clear action
-      await FirebaseService.trackEvent('notifications_cleared', {
+      FirebaseService.trackEvent('notifications_cleared', {
         count: notifications.length
-      });
+      }).catch(console.error);
 
     } catch (error) {
       console.error('Error clearing notifications:', error);

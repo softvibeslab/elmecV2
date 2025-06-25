@@ -33,47 +33,63 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(null);
   const [userProfile, setUserProfile] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const mounted = useRef(false);
+  const mounted = useRef(true);
 
   useEffect(() => {
-    mounted.current = true;
-    
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (!mounted.current) return;
-      
-      setCurrentUser(user);
-      
-      if (user) {
-        // Get user profile from Firestore
-        const profile = await FirebaseService.getUserInfo(user.uid);
-        if (mounted.current) {
-          setUserProfile(profile);
-        }
+    let unsubscribe: (() => void) | undefined;
+
+    try {
+      unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (!mounted.current) return;
         
-        // Track login event
-        await FirebaseService.trackEvent('user_login', {
-          userId: user.uid,
-          method: 'email'
-        });
-      } else {
-        if (mounted.current) {
-          setUserProfile(null);
+        try {
+          setCurrentUser(user);
+          
+          if (user) {
+            // Get user profile from Firestore
+            const profile = await FirebaseService.getUserInfo(user.uid);
+            if (mounted.current && profile) {
+              setUserProfile(profile);
+              
+              // Track login event
+              FirebaseService.trackEvent('user_login', {
+                userId: user.uid,
+                method: 'email'
+              }).catch(console.error);
+            }
+          } else {
+            if (mounted.current) {
+              setUserProfile(null);
+            }
+          }
+        } catch (error) {
+          console.error('Error in auth state change:', error);
+        } finally {
+          if (mounted.current) {
+            setLoading(false);
+          }
         }
-      }
-      
+      });
+    } catch (error) {
+      console.error('Error setting up auth listener:', error);
       if (mounted.current) {
         setLoading(false);
       }
-    });
+    }
 
     return () => {
       mounted.current = false;
-      unsubscribe();
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    if (!mounted.current) return Promise.reject(new Error('Component unmounted'));
+    if (!mounted.current) {
+      throw new Error('Component unmounted');
+    }
+    
     setLoading(true);
     try {
       const user = await FirebaseService.loginUser(email, password);
@@ -81,6 +97,9 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
         setUserProfile(user);
       }
       return user;
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
     } finally {
       if (mounted.current) {
         setLoading(false);
@@ -89,22 +108,27 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   };
 
   const register = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
-    if (!mounted.current) return Promise.reject(new Error('Component unmounted'));
+    if (!mounted.current) {
+      throw new Error('Component unmounted');
+    }
+    
     setLoading(true);
     try {
       const user = await FirebaseService.registerUser(userData);
       if (mounted.current) {
         setUserProfile(user);
+        
+        // Track registration event
+        FirebaseService.trackEvent('user_register', {
+          userId: user.id,
+          role: user.rol,
+          company: user.empresa
+        }).catch(console.error);
       }
-      
-      // Track registration event
-      await FirebaseService.trackEvent('user_register', {
-        userId: user.id,
-        role: user.rol,
-        company: user.empresa
-      });
-      
       return user;
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
     } finally {
       if (mounted.current) {
         setLoading(false);
@@ -114,19 +138,22 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
 
   const logout = async (): Promise<void> => {
     if (!mounted.current) return;
+    
     setLoading(true);
     try {
       if (currentUser) {
         // Track logout event
-        await FirebaseService.trackEvent('user_logout', {
+        FirebaseService.trackEvent('user_logout', {
           userId: currentUser.uid
-        });
+        }).catch(console.error);
       }
       
       await FirebaseService.logoutUser();
       if (mounted.current) {
         setUserProfile(null);
       }
+    } catch (error) {
+      console.error('Logout error:', error);
     } finally {
       if (mounted.current) {
         setLoading(false);
@@ -137,9 +164,14 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
     if (!mounted.current || !currentUser || !userProfile) return;
     
-    await FirebaseService.updateUser(currentUser.uid, updates);
-    if (mounted.current) {
-      setUserProfile({ ...userProfile, ...updates });
+    try {
+      await FirebaseService.updateUser(currentUser.uid, updates);
+      if (mounted.current) {
+        setUserProfile({ ...userProfile, ...updates });
+      }
+    } catch (error) {
+      console.error('Update profile error:', error);
+      throw error;
     }
   };
 
