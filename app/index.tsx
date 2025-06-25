@@ -1,10 +1,10 @@
 import { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { useAuth } from '@/contexts/AuthContext';
+import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function App() {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated } = useFirebaseAuth();
   const router = useRouter();
 
   useEffect(() => {
