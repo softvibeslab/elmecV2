@@ -5,7 +5,7 @@ import { useNotifications } from '@/contexts/NotificationContext';
 import { useFirebaseAuth } from '../../contexts/FirebaseAuthContext';
 import { FirebaseService } from '@/services/firebaseService';
 import { useRequestFilters } from '@/hooks/useRequestFilters';
-import RequestFiltersModal from '@/components/RequestFiltersModal';
+import { RequestFiltersModal } from '@/components/RequestFiltersModal';
 import { Plus, Clock, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Send, X, User, Filter, Search } from 'lucide-react-native';
 import type { Request as FirebaseRequest, User as FirebaseUser } from '@/types/firebase';
 
