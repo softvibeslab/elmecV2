@@ -2,56 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotifications } from '@/contexts/NotificationContext';
+import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
+import { FirebaseService } from '@/services/firebaseService';
 import { Plus, Clock, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Send, X, User } from 'lucide-react-native';
+import type { Request as FirebaseRequest, User as FirebaseUser } from '@/types/firebase';
 
-interface Request {
-  id: string;
-  titulo: string;
-  mensaje: string;
-  agenteDestino: string;
-  fechaEnvio: string;
-  estatus: 'recibido' | 'en_proceso' | 'resuelto';
-  respuesta?: string;
-}
+// Using Firebase types
+type Request = FirebaseRequest;
 
-const mockRequests: Request[] = [
-  {
-    id: '1',
-    titulo: 'Soporte técnico urgente',
-    mensaje: 'Necesito ayuda con la configuración del equipo nuevo que se instaló ayer.',
-    agenteDestino: 'Carlos Mendoza López',
-    fechaEnvio: '2024-01-15T10:30:00',
-    estatus: 'en_proceso',
-  },
-  {
-    id: '2',
-    titulo: 'Consulta sobre facturación',
-    mensaje: 'Tengo dudas sobre los cargos en mi última factura del mes pasado.',
-    agenteDestino: 'Ana García Martínez',
-    fechaEnvio: '2024-01-14T14:15:00',
-    estatus: 'resuelto',
-    respuesta: 'Los cargos corresponden al mantenimiento programado. Te envié el detalle por correo.',
-  },
-  {
-    id: '3',
-    titulo: 'Información sobre productos',
-    mensaje: 'Me interesa conocer más sobre las nuevas soluciones de energía renovable.',
-    agenteDestino: 'Luis Ramírez González',
-    fechaEnvio: '2024-01-13T09:45:00',
-    estatus: 'recibido',
-  },
-];
-
-const mockAgents = [
-  { id: '1', nombre: 'Luis Ramírez González', categoria: 'Agentes de venta' },
-  { id: '2', nombre: 'Ana García Martínez', categoria: 'Servicio al Cliente' },
-  { id: '3', nombre: 'Carlos Mendoza López', categoria: 'Soporte' },
-  { id: '4', nombre: 'María Torres Ruiz', categoria: 'Agentes de venta' },
-  { id: '5', nombre: 'José Hernández Silva', categoria: 'Servicio al Cliente' },
-];
+// Firebase data will be loaded dynamically
 
 export default function Requests() {
-  const [requests, setRequests] = useState<Request[]>(mockRequests);
+  const [requests, setRequests] = useState<Request[]>([]);
+  const [agents, setAgents] = useState<FirebaseUser[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
   const [newRequest, setNewRequest] = useState({
     titulo: '',
@@ -60,51 +24,66 @@ export default function Requests() {
   });
   const { sendLocalNotification } = useNotifications();
   const { sendDemoNotification } = useNotifications();
+  const { user } = useFirebaseAuth();
 
-  // Simulate status changes and send notifications
+  // Load requests and agents from Firebase
   useEffect(() => {
-    const interval = setInterval(() => {
-      // Randomly update request status
-      if (Math.random() > 0.98) {
-        setRequests(prevRequests => {
-          const updatedRequests = [...prevRequests];
-          const randomIndex = Math.floor(Math.random() * updatedRequests.length);
-          const request = updatedRequests[randomIndex];
-          
-          if (request.estatus === 'recibido') {
-            request.estatus = 'en_proceso';
-            sendDemoNotification(
-              'Solicitud actualizada',
-              `Tu solicitud "${request.titulo}" está ahora en proceso`,
-              'info',
-              { requestId: request.id }
-            );
-          } else if (request.estatus === 'en_proceso' && Math.random() > 0.5) {
-            request.estatus = 'resuelto';
-            request.respuesta = 'Tu solicitud ha sido resuelta. Revisa los detalles en la aplicación.';
-            sendDemoNotification(
-              'Solicitud resuelta',
-              `Tu solicitud "${request.titulo}" ha sido resuelta`,
-              'success',
-              { requestId: request.id }
-            );
-          }
-          
-          return updatedRequests;
-        });
+    const loadData = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        
+        // Load user's requests
+        const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+        setRequests(userRequests);
+        
+        // Load available agents (users with agent roles)
+        const availableAgents = await FirebaseService.getDirectoryUsers('Soporte');
+        setAgents(availableAgents);
+        
+      } catch (error) {
+        console.error('Error loading data:', error);
+        Alert.alert('Error', 'No se pudieron cargar los datos');
+      } finally {
+        setLoading(false);
       }
-    }, 10000); // Check every 10 seconds
+    };
 
-    return () => clearInterval(interval);
-  }, [sendDemoNotification]);
+    loadData();
+  }, [user]);
+
+  // Listen for real-time request updates
+  useEffect(() => {
+    if (!user) return;
+
+    // Note: subscribeToUserRequests doesn't exist in FirebaseService
+    // We'll implement periodic refresh instead
+    const interval = setInterval(async () => {
+      try {
+        const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+        setRequests(userRequests);
+      } catch (error) {
+        console.error('Error refreshing requests:', error);
+      }
+    }, 30000); // Refresh every 30 seconds
+
+    const unsubscribe = () => clearInterval(interval);
+
+    return unsubscribe;
+  }, [user]);
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'recibido':
+      case 'nuevo':
+      case 'asignado':
         return <AlertTriangle size={16} color="#f59e0b" />;
       case 'en_proceso':
         return <Clock size={16} color="#3b82f6" />;
+      case 'pausado':
+        return <AlertTriangle size={16} color="#f97316" />;
       case 'resuelto':
+      case 'cerrado':
         return <CheckCircle size={16} color="#10b981" />;
       default:
         return <AlertTriangle size={16} color="#6b7280" />;
@@ -113,12 +92,18 @@ export default function Requests() {
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'recibido':
-        return 'Recibido';
+      case 'nuevo':
+        return 'Nuevo';
+      case 'asignado':
+        return 'Asignado';
       case 'en_proceso':
         return 'En proceso';
+      case 'pausado':
+        return 'Pausado';
       case 'resuelto':
         return 'Resuelto';
+      case 'cerrado':
+        return 'Cerrado';
       default:
         return 'Desconocido';
     }
@@ -126,11 +111,15 @@ export default function Requests() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'recibido':
+      case 'nuevo':
+      case 'asignado':
         return '#f59e0b';
       case 'en_proceso':
         return '#3b82f6';
+      case 'pausado':
+        return '#f97316';
       case 'resuelto':
+      case 'cerrado':
         return '#10b981';
       default:
         return '#6b7280';
@@ -149,33 +138,52 @@ export default function Requests() {
   };
 
   const handleCreateRequest = async () => {
-    if (!newRequest.titulo || !newRequest.mensaje || !newRequest.agenteDestino) {
+    if (!newRequest.titulo || !newRequest.mensaje || !newRequest.agenteDestino || !user) {
       Alert.alert('Error', 'Por favor completa todos los campos');
       return;
     }
 
-    const request: Request = {
-      id: Date.now().toString(),
-      titulo: newRequest.titulo,
-      mensaje: newRequest.mensaje,
-      agenteDestino: newRequest.agenteDestino,
-      fechaEnvio: new Date().toISOString(),
-      estatus: 'recibido',
-    };
+    try {
+      const selectedAgent = agents.find(agent => agent.nombre === newRequest.agenteDestino);
+      
+      const requestData = {
+         titulo: newRequest.titulo,
+         mensaje: newRequest.mensaje,
+         usuarioId: user.uid,
+         agenteId: selectedAgent?.id || '',
+         tipo: 1, // General request type
+         prioridad: 'media' as const,
+         estatus: 'nuevo' as const,
+         metadata: {
+           source: 'mobile' as const,
+           urgencia: false,
+           cliente_vip: false
+         },
+         historialEstatus: []
+       };
 
-    setRequests([request, ...requests]);
-    setNewRequest({ titulo: '', mensaje: '', agenteDestino: '' });
-    setShowNewRequestModal(false);
-    
-    // Send notification for new request
-    await sendDemoNotification(
-      'Solicitud enviada',
-      `Tu solicitud "${request.titulo}" ha sido enviada correctamente`,
-      'success',
-      { requestId: request.id }
-    );
-    
-    Alert.alert('Éxito', 'Solicitud enviada correctamente');
+      const createdRequest = await FirebaseService.createRequest(requestData);
+      
+      // Refresh requests list
+      const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+      setRequests(userRequests);
+      
+      setNewRequest({ titulo: '', mensaje: '', agenteDestino: '' });
+      setShowNewRequestModal(false);
+      
+      // Send notification for new request
+      await sendDemoNotification(
+        'Solicitud enviada',
+        `Tu solicitud "${createdRequest.titulo}" ha sido enviada correctamente`,
+        'success',
+        { requestId: createdRequest.id }
+      );
+      
+      Alert.alert('Éxito', 'Solicitud enviada correctamente');
+    } catch (error) {
+      console.error('Error creating request:', error);
+      Alert.alert('Error', 'No se pudo enviar la solicitud');
+    }
   };
 
   return (
@@ -211,10 +219,12 @@ export default function Requests() {
             <Text style={styles.requestTitle}>{request.titulo}</Text>
             <Text style={styles.requestMessage}>{request.mensaje}</Text>
 
-            <View style={styles.agentInfo}>
-              <User size={16} color="#6b7280" />
-              <Text style={styles.agentName}>Para: {request.agenteDestino}</Text>
-            </View>
+            {request.agenteId && (
+              <View style={styles.agentInfo}>
+                <User size={16} color="#6b7280" />
+                <Text style={styles.agentName}>Asignado a: {agents.find(a => a.id === request.agenteId)?.nombre || 'Agente'}</Text>
+              </View>
+            )}
 
             {request.respuesta && (
               <View style={styles.responseContainer}>
@@ -264,7 +274,7 @@ export default function Requests() {
             <View style={styles.formGroup}>
               <Text style={styles.formLabel}>Agente Destino</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.agentsScroll}>
-                {mockAgents.map((agent) => (
+                {agents.map((agent) => (
                   <TouchableOpacity
                     key={agent.id}
                     style={[
@@ -283,7 +293,7 @@ export default function Requests() {
                       styles.agentChipCategory,
                       newRequest.agenteDestino === agent.nombre && styles.agentChipCategorySelected
                     ]}>
-                      {agent.categoria}
+                      {agent.categoria || 'Soporte'}
                     </Text>
                   </TouchableOpacity>
                 ))}
