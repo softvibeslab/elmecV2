@@ -2,9 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Alert, Modal } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNotifications } from '@/contexts/NotificationContext';
-import { useFirebaseAuth } from '@/hooks/useFirebaseAuth';
+import { useFirebaseAuth } from '../../contexts/FirebaseAuthContext';
 import { FirebaseService } from '@/services/firebaseService';
-import { Plus, Clock, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Send, X, User } from 'lucide-react-native';
+import { useRequestFilters } from '@/hooks/useRequestFilters';
+import RequestFiltersModal from '@/components/RequestFiltersModal';
+import { Plus, Clock, CircleCheck as CheckCircle, TriangleAlert as AlertTriangle, Send, X, User, Filter, Search } from 'lucide-react-native';
 import type { Request as FirebaseRequest, User as FirebaseUser } from '@/types/firebase';
 
 // Using Firebase types
@@ -17,6 +19,7 @@ export default function Requests() {
   const [agents, setAgents] = useState<FirebaseUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [showNewRequestModal, setShowNewRequestModal] = useState(false);
+  const [showFiltersModal, setShowFiltersModal] = useState(false);
   const [newRequest, setNewRequest] = useState({
     titulo: '',
     mensaje: '',
@@ -24,7 +27,19 @@ export default function Requests() {
   });
   const { sendLocalNotification } = useNotifications();
   const { sendDemoNotification } = useNotifications();
-  const { user } = useFirebaseAuth();
+  const { userProfile: user } = useFirebaseAuth();
+  
+  // Use the custom hook for filtering
+  const {
+    filters,
+    filteredRequests,
+    totalCount,
+    filteredCount,
+    activeFiltersCount,
+    updateFilters,
+    clearFilters,
+    hasActiveFilters
+  } = useRequestFilters(requests);
 
   // Load requests and agents from Firebase
   useEffect(() => {
@@ -35,7 +50,7 @@ export default function Requests() {
         setLoading(true);
         
         // Load user's requests
-        const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+        const userRequests = await FirebaseService.getUserRequests(user.id, user.categoria || 'Cliente');
         setRequests(userRequests);
         
         // Load available agents (users with agent roles)
@@ -61,7 +76,7 @@ export default function Requests() {
     // We'll implement periodic refresh instead
     const interval = setInterval(async () => {
       try {
-        const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+        const userRequests = await FirebaseService.getUserRequests(user.id, user.categoria || 'Cliente');
         setRequests(userRequests);
       } catch (error) {
         console.error('Error refreshing requests:', error);
@@ -149,7 +164,7 @@ export default function Requests() {
       const requestData = {
          titulo: newRequest.titulo,
          mensaje: newRequest.mensaje,
-         usuarioId: user.uid,
+         usuarioId: user.id,
          agenteId: selectedAgent?.id || '',
          tipo: 1, // General request type
          prioridad: 'media' as const,
@@ -165,7 +180,7 @@ export default function Requests() {
       const createdRequest = await FirebaseService.createRequest(requestData);
       
       // Refresh requests list
-      const userRequests = await FirebaseService.getUserRequests(user.uid, user.categoria || 'Cliente');
+      const userRequests = await FirebaseService.getUserRequests(user.id, user.categoria || 'Cliente');
       setRequests(userRequests);
       
       setNewRequest({ titulo: '', mensaje: '', agenteDestino: '' });
@@ -192,19 +207,67 @@ export default function Requests() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.title}>Solicitudes</Text>
-            <Text style={styles.subtitle}>{requests.length} solicitudes totales</Text>
+            <Text style={styles.subtitle}>
+              {hasActiveFilters ? `${filteredCount} de ${totalCount}` : `${totalCount} solicitudes totales`}
+            </Text>
+            {hasActiveFilters && (
+              <TouchableOpacity
+                style={styles.clearFiltersButton}
+                onPress={clearFilters}
+              >
+                <Text style={styles.clearFiltersText}>Limpiar filtros</Text>
+              </TouchableOpacity>
+            )}
           </View>
-          <TouchableOpacity
-            style={styles.addButton}
-            onPress={() => setShowNewRequestModal(true)}
-          >
-            <Plus size={24} color="#ffffff" />
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity
+              style={[
+                styles.filterButton,
+                hasActiveFilters && styles.filterButtonActive
+              ]}
+              onPress={() => setShowFiltersModal(true)}
+            >
+              <Filter size={20} color={hasActiveFilters ? '#ffffff' : '#6b7280'} />
+              {activeFiltersCount > 0 && (
+                <View style={styles.filterBadge}>
+                  <Text style={styles.filterBadgeText}>{activeFiltersCount}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowNewRequestModal(true)}
+            >
+              <Plus size={24} color="#ffffff" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
       <ScrollView style={styles.list} showsVerticalScrollIndicator={false}>
-        {requests.map((request) => (
+        {filteredRequests.length === 0 ? (
+          hasActiveFilters ? (
+            <View style={styles.emptyState}>
+              <Search size={48} color="#d1d5db" />
+              <Text style={styles.emptyText}>No se encontraron solicitudes</Text>
+              <Text style={styles.emptySubtext}>
+                No hay solicitudes que coincidan con los filtros aplicados
+              </Text>
+              <TouchableOpacity
+                style={styles.clearFiltersButtonEmpty}
+                onPress={clearFilters}
+              >
+                <Text style={styles.clearFiltersButtonEmptyText}>Limpiar filtros</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No tienes solicitudes aún</Text>
+              <Text style={styles.emptySubtext}>Toca el botón + para crear tu primera solicitud</Text>
+            </View>
+          )
+        ) : (
+          filteredRequests.map((request) => (
           <View key={request.id} style={styles.requestCard}>
             <View style={styles.requestHeader}>
               <View style={styles.requestStatus}>
@@ -213,7 +276,7 @@ export default function Requests() {
                   {getStatusText(request.estatus)}
                 </Text>
               </View>
-              <Text style={styles.requestDate}>{formatDate(request.fechaEnvio)}</Text>
+              <Text style={styles.requestDate}>{formatDate(request.createdAt)}</Text>
             </View>
 
             <Text style={styles.requestTitle}>{request.titulo}</Text>
@@ -226,22 +289,27 @@ export default function Requests() {
               </View>
             )}
 
-            {request.respuesta && (
-              <View style={styles.responseContainer}>
-                <Text style={styles.responseLabel}>Respuesta:</Text>
-                <Text style={styles.responseText}>{request.respuesta}</Text>
-              </View>
-            )}
+            {request.feedback && (
+               <View style={styles.responseContainer}>
+                 <Text style={styles.responseLabel}>Respuesta del agente:</Text>
+                 <Text style={styles.responseText}>{request.feedback}</Text>
+               </View>
+             )}
           </View>
-        ))}
-
-        {requests.length === 0 && (
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>No tienes solicitudes aún</Text>
-            <Text style={styles.emptySubtext}>Toca el botón + para crear tu primera solicitud</Text>
-          </View>
+          ))
         )}
       </ScrollView>
+
+      {/* Filters Modal */}
+      <RequestFiltersModal
+        visible={showFiltersModal}
+        onClose={() => setShowFiltersModal(false)}
+        onApplyFilters={updateFilters}
+        agents={agents}
+        currentFilters={filters}
+        totalRequests={totalCount}
+        filteredCount={filteredCount}
+      />
 
       <Modal
         visible={showNewRequestModal}
@@ -341,6 +409,59 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  clearFiltersButton: {
+    marginTop: 4,
+  },
+  clearFiltersText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#3b82f6',
+  },
+  filterButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#f3f4f6',
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  filterButtonActive: {
+    backgroundColor: '#3b82f6',
+  },
+  filterBadge: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    backgroundColor: '#ef4444',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterBadgeText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
+  },
+  clearFiltersButtonEmpty: {
+    backgroundColor: '#3b82f6',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
+    marginTop: 16,
+  },
+  clearFiltersButtonEmptyText: {
+    fontSize: 14,
+    fontFamily: 'Inter-SemiBold',
+    color: '#ffffff',
   },
   title: {
     fontSize: 28,
