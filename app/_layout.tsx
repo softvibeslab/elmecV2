@@ -9,6 +9,7 @@ import { FirebaseNotificationProvider } from '@/contexts/FirebaseNotificationCon
 import { FirebaseChatProvider } from '@/contexts/FirebaseChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { NotificationManager } from '@/components/NotificationToast';
+import { AnalyticsProvider } from '@/components/AnalyticsProvider';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -37,13 +38,15 @@ export default function RootLayout() {
       <NotificationProvider>
         <FirebaseNotificationProvider>
           <FirebaseChatProvider>
-            <Stack screenOptions={{ headerShown: false }}>
-              <Stack.Screen name="auth" options={{ headerShown: false }} />
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-            <StatusBar style="auto" />
-            <NotificationManager />
+            <AnalyticsProvider>
+              <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Screen name="auth" options={{ headerShown: false }} />
+                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                <Stack.Screen name="+not-found" />
+              </Stack>
+              <StatusBar style="auto" />
+              <NotificationManager />
+            </AnalyticsProvider>
           </FirebaseChatProvider>
         </FirebaseNotificationProvider>
       </NotificationProvider>
