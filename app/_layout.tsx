@@ -10,6 +10,9 @@ import { FirebaseChatProvider } from '@/contexts/FirebaseChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { NotificationManager } from '@/components/NotificationToast';
 import { AnalyticsProvider } from '@/components/AnalyticsProvider';
+import { Provider } from 'react-redux';
+import { store } from '@/store';
+import '@/i18n';
 
 SplashScreen.preventAutoHideAsync();
 
@@ -34,22 +37,24 @@ export default function RootLayout() {
   }
 
   return (
-    <FirebaseAuthProvider>
-      <NotificationProvider>
-        <FirebaseNotificationProvider>
-          <FirebaseChatProvider>
-            <AnalyticsProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="auth" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="+not-found" />
-              </Stack>
-              <StatusBar style="auto" />
-              <NotificationManager />
-            </AnalyticsProvider>
-          </FirebaseChatProvider>
+    <Provider store={store}>
+      <FirebaseAuthProvider>
+        <NotificationProvider>
+          <FirebaseNotificationProvider>
+            <FirebaseChatProvider>
+              <AnalyticsProvider>
+                <Stack screenOptions={{ headerShown: false }}>
+                  <Stack.Screen name="auth" options={{ headerShown: false }} />
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <StatusBar style="auto" />
+                <NotificationManager />
+              </AnalyticsProvider>
+            </FirebaseChatProvider>
         </FirebaseNotificationProvider>
-      </NotificationProvider>
-    </FirebaseAuthProvider>
+       </NotificationProvider>
+     </FirebaseAuthProvider>
+   </Provider>
   );
 }
