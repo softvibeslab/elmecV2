@@ -1,7 +1,6 @@
 import React, { ReactNode } from 'react';
-import { FirebaseAuthProvider } from '@/contexts/FirebaseAuthContext';
-import { FirebaseNotificationProvider } from '@/contexts/FirebaseNotificationContext';
-import { FirebaseChatProvider } from '@/contexts/FirebaseChatContext';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { ChatProvider } from '@/contexts/ChatContext';
 import { NotificationProvider } from '@/contexts/NotificationContext';
 import { NotificationManager } from '@/components/NotificationToast';
 
@@ -11,10 +10,16 @@ interface ContextProvidersProps {
 
 export const ContextProviders: React.FC<ContextProvidersProps> = ({ children }) => {
   return (
-    <FirebaseAuthProvider>
+    <AuthProvider>
       <NotificationProvider>
-        <FirebaseNotificationProvider>
-          <FirebaseChatProvider>
+        <ChatProvider>
+          {children}
+          <NotificationManager />
+        </ChatProvider>
+      </NotificationProvider>
+    </AuthProvider>
+  );
+};
             {children}
             <NotificationManager />
           </FirebaseChatProvider>

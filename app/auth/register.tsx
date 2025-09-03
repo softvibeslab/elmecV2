@@ -42,7 +42,7 @@ export default function Register() {
           { text: 'OK', onPress: () => router.replace('/(tabs)') }
         ]);
       } else {
-        Alert.alert('Error', 'Error al registrar usuario');
+        Alert.alert('Error', 'Error al registrar usuario o el email ya existe');
       }
     } catch (error) {
       Alert.alert('Error', 'Error al registrar usuario');

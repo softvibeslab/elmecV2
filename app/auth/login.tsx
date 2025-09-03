@@ -25,7 +25,7 @@ export default function Login() {
       if (success) {
         router.replace('/(tabs)');
       } else {
-        Alert.alert('Error', 'Credenciales incorrectas');
+        Alert.alert('Error', 'Credenciales incorrectas. Usa test@elmec.com / password');
       }
     } catch (error) {
       Alert.alert('Error', 'Error al iniciar sesión');
