@@ -59,23 +59,23 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    setLoading(true);
-    try {
-      const user = await FirebaseService.loginUser(email, password);
-      setUserProfile(user);
-      return user;
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const register = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
-    setLoading(true);
-    try {
-      // Simular registro exitoso para evitar errores
-      const newUser: User = {
-        id: Date.now().toString(),
-        ...userData,
+    // Simular login exitoso para credenciales de prueba
+    if (email === 'test@elmec.com' && password === 'password') {
+      const mockUser: User = {
+        id: 'test-user-id',
+        email: email,
+        empresa: 'ELMEC',
+        nombre: 'Usuario',
+        apellidoPaterno: 'Prueba',
+        apellidoMaterno: 'Test',
+        correoElectronico: email,
+        celular: '+52 123 456 7890',
+        ciudad: 'México',
+        estado: 'CDMX',
+        rol: 'customer',
+        categoria: 'Cliente',
+        zona: 'Centro',
+        activo: true,
         fcmTokens: [],
         isOnline: true,
         lastSeen: new Date().toISOString(),
@@ -83,58 +83,33 @@ export const FirebaseAuthProvider: React.FC<AuthProviderProps> = ({ children }) 
         updatedAt: new Date().toISOString()
       };
       
-      setUserProfile(newUser);
-      
-      // Track registration event
-      await FirebaseService.trackEvent('user_register', {
-        userId: newUser.id,
-        role: newUser.rol,
-        company: newUser.empresa
-      }
-      )
-      // Simular login exitoso para credenciales de prueba
-      if (email === 'test@elmec.com' && password === 'password') {
-        const mockUser: User = {
-          id: 'test-user-id',
-          email: email,
-          empresa: 'ELMEC',
-          nombre: 'Usuario',
-          apellidoPaterno: 'Prueba',
-          apellidoMaterno: 'Test',
-          correoElectronico: email,
-          celular: '+52 123 456 7890',
-          ciudad: 'México',
-          estado: 'CDMX',
-          rol: 'customer',
-          categoria: 'Cliente',
-          zona: 'Centro',
-          activo: true,
-          fcmTokens: [],
-          isOnline: true,
-          lastSeen: new Date().toISOString(),
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-        
-        setUserProfile(mockUser);
-        return mockUser;
-      } else {
-        throw new Error('Credenciales incorrectas');
-      }
-    } finally {
-      setLoading(false);
+      setUserProfile(mockUser);
+      return mockUser;
+    } else {
+      throw new Error('Credenciales incorrectas');
     }
   };
 
+  const register = async (userData: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> => {
+    // Simular registro exitoso
+    const newUser: User = {
+      id: Date.now().toString(),
+      ...userData,
+      fcmTokens: [],
+      isOnline: true,
+      lastSeen: new Date().toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    setUserProfile(newUser);
+    return newUser;
+  };
+
   const logout = async (): Promise<void> => {
-    setLoading(true);
-    try {
-      // Simular logout
-      setUserProfile(null);
-      setCurrentUser(null);
-    } finally {
-      setLoading(false);
-    }
+    // Simular logout
+    setUserProfile(null);
+    setCurrentUser(null);
   };
 
   const updateProfile = async (updates: Partial<User>): Promise<void> => {
