@@ -4,17 +4,26 @@ import { useFirebaseAuth } from '@/contexts/FirebaseAuthContext';
 import { View, Text, StyleSheet } from 'react-native';
 
 export default function App() {
-  const { isAuthenticated } = useFirebaseAuth();
+  const { isAuthenticated, loading } = useFirebaseAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (isAuthenticated) {
-      router.replace('/(tabs)');
-    } else {
-      router.replace('/auth');
+    if (!loading) {
+      if (isAuthenticated) {
+        router.replace('/(tabs)');
+      } else {
+        router.replace('/auth');
+      }
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, loading]);
 
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.loadingText}>Cargando...</Text>
+      </View>
+    );
+  }
   return (
     <View style={styles.container}>
       <Text style={styles.loadingText}>Cargando...</Text>

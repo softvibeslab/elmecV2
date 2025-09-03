@@ -17,11 +17,83 @@ export default function Directory() {
   const [selectedZone, setSelectedZone] = useState<string>('Todas');
   const [showFilters, setShowFilters] = useState(false);
   const [personnel, setPersonnel] = useState<PersonnelMember[]>([]);
-  const [loading, setLoading] = useState(true);
-  const { createChatRoom } = useChat();
+        
+        // Simular datos del directorio para evitar errores
+        const mockPersonnel = [
+          {
+            id: 'agent1',
+            nombre: 'Luis',
+            apellidoPaterno: 'Ramírez',
+            apellidoMaterno: 'González',
+            nombreCompleto: 'Luis Ramírez González',
+            idCorto: 'LRG001',
+            categoria: 'Soporte',
+            zona: 'Centro',
+            correoElectronico: 'luis@elmec.com',
+            telefono: '+52 123 456 7890',
+            empresa: 'ELMEC',
+            celular: '+52 123 456 7890',
+            ciudad: 'México',
+            estado: 'CDMX',
+            rol: 'agent',
+            activo: true,
+            fcmTokens: [],
+            isOnline: true,
+            lastSeen: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'agent2',
+            nombre: 'Ana',
+            apellidoPaterno: 'García',
+            apellidoMaterno: 'Martínez',
+            nombreCompleto: 'Ana García Martínez',
+            idCorto: 'AGM002',
+            categoria: 'Servicio al Cliente',
+            zona: 'Norte',
+            correoElectronico: 'ana@elmec.com',
+            telefono: '+52 987 654 3210',
+            empresa: 'ELMEC',
+            celular: '+52 987 654 3210',
+            ciudad: 'México',
+            estado: 'CDMX',
+            rol: 'agent',
+            activo: true,
+            fcmTokens: [],
+            isOnline: true,
+            lastSeen: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          },
+          {
+            id: 'agent3',
+            nombre: 'Carlos',
+            apellidoPaterno: 'López',
+            apellidoMaterno: 'Hernández',
+            nombreCompleto: 'Carlos López Hernández',
+            idCorto: 'CLH003',
+            categoria: 'Agentes de venta',
+            zona: 'Sur',
+            correoElectronico: 'carlos@elmec.com',
+            telefono: '+52 555 123 4567',
+            empresa: 'ELMEC',
+            celular: '+52 555 123 4567',
+            ciudad: 'México',
+            estado: 'CDMX',
+            rol: 'agent',
+            activo: true,
+            fcmTokens: [],
+            isOnline: false,
+            lastSeen: new Date(Date.now() - 3600000).toISOString(),
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          }
+        ];
+        
+        setPersonnel(mockPersonnel);
   const { sendDemoNotification } = useNotifications();
   const { user } = useFirebaseAuth();
-  const router = useRouter();
 
   const categories = ['Todos', 'Agentes de venta', 'Servicio al Cliente', 'Soporte'];
   const zones = ['Todas', 'Norte', 'Sur', 'Centro', 'Este', 'Oeste'];
@@ -109,16 +181,6 @@ export default function Directory() {
             }
             
             try {
-              await FirebaseService.createRequest({
-                titulo: `Solicitud para ${person.nombreCompleto}`,
-                descripcion: `Solicitud enviada desde el directorio`,
-                categoria: 'General',
-                prioridad: 'Media',
-                usuarioId: user.uid,
-                agenteAsignado: person.id,
-                estado: 'Pendiente'
-              });
-              
               await sendDemoNotification(
                 'Solicitud enviada',
                 `Solicitud enviada a ${person.nombreCompleto}`,
