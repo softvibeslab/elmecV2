@@ -20,11 +20,3 @@ export const ContextProviders: React.FC<ContextProvidersProps> = ({ children }) 
     </AuthProvider>
   );
 };
-            {children}
-            <NotificationManager />
-          </FirebaseChatProvider>
-        </FirebaseNotificationProvider>
-      </NotificationProvider>
-    </FirebaseAuthProvider>
-  );
-};
