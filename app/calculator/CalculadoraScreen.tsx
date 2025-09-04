@@ -9,7 +9,7 @@ import {
   TextStyle,
 } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 import { connect, ConnectedProps } from 'react-redux';
 import { RootState } from '../redux/reducers';
 import HeaderComponent from '../components/HeaderComponent';
