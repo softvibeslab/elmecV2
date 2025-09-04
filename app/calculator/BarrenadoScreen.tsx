@@ -32,7 +32,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 
 import * as Constants from '../constants';
-import LinearGradient from 'react-native-linear-gradient';
+import { LinearGradient } from 'expo-linear-gradient';
 
 import ViewShot from "react-native-view-shot";
 import { useIsFocused, useNavigation } from '@react-navigation/native';
