@@ -3,12 +3,9 @@ import { View, TouchableOpacity, Text, StyleSheet, Dimensions } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next';
 import { Drill, Settings as SettingsIcon } from 'lucide-react-native';
-import HeaderComponent from '@/components/HeaderComponent';
 
-export default function CalculadoraScreen() {
-  const { t } = useTranslation();
+export default function CalculatorIndex() {
   const router = useRouter();
   const { width, height } = Dimensions.get('window');
 
@@ -18,34 +15,37 @@ export default function CalculadoraScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <HeaderComponent 
-        title="Calculadora"
-        showBackButton={true}
-        showSecondButton={true}
-        onSecondButtonPress={() => router.push('/calculator/SettingsCalculadora' as any)}
-      />
+      <View style={styles.header}>
+        <Text style={styles.title}>Calculadora</Text>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => router.push('/calculator/SettingsCalculadoraScreen' as any)}
+        >
+          <SettingsIcon size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
       
       <View style={styles.content}>
         <TouchableOpacity
           style={styles.calculatorButton}
-          onPress={() => handleNavigation('Barrenado')}
+          onPress={() => handleNavigation('BarrenadoScreen')}
         >
           <LinearGradient colors={['#ffffff', '#f3f4f6']} style={styles.buttonGradient}>
             <View style={styles.buttonContent}>
               <Drill size={48} color="#1e40af" />
-              <Text style={styles.buttonText}>{t('home:barrenado')}</Text>
+              <Text style={styles.buttonText}>Barrenado</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
 
         <TouchableOpacity
           style={styles.calculatorButton}
-          onPress={() => handleNavigation('Fresado')}
+          onPress={() => handleNavigation('FresadoScreen')}
         >
           <LinearGradient colors={['#ffffff', '#f3f4f6']} style={styles.buttonGradient}>
             <View style={styles.buttonContent}>
               <SettingsIcon size={48} color="#1e40af" />
-              <Text style={styles.buttonText}>{t('home:fresado')}</Text>
+              <Text style={styles.buttonText}>Fresado</Text>
             </View>
           </LinearGradient>
         </TouchableOpacity>
@@ -58,6 +58,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e40af',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingTop: 60,
+  },
+  title: {
+    fontSize: 24,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
+  },
+  settingsButton: {
+    padding: 8,
   },
   content: {
     flex: 1,

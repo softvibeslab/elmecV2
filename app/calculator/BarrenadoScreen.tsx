@@ -12,21 +12,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { ChevronUp, ChevronDown, RotateCcw } from 'lucide-react-native';
-import HeaderComponent from '@/components/HeaderComponent';
-import * as Constants from '@/constants/calculator';
+import { ChevronUp, ChevronDown, ArrowLeft, Settings } from 'lucide-react-native';
 
 export default function BarrenadoScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = Dimensions.get('window');
   
   const [showLoading, setShowLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [medidas, setMedidaCode] = useState(Constants.medida_mt);
+  const [medidas, setMedidaCode] = useState({
+    mm: 'mm',
+    mmin: 'm/min',
+    mmrev: 'mm/rev',
+    mmmin: 'mm/min',
+    rpm: 'rpm',
+    cm3min: 'cm³/min'
+  });
   const [velocidadcode, setVelocidadCode] = useState('n');
   
   const [editable, setEditable] = useState(0);
@@ -78,9 +81,23 @@ export default function BarrenadoScreen() {
         switch (key) {
           case 'user-medida':
             if (value === 'mt') {
-              setMedidaCode(Constants.medida_mt);
+              setMedidaCode({
+                mm: 'mm',
+                mmin: 'm/min',
+                mmrev: 'mm/rev',
+                mmmin: 'mm/min',
+                rpm: 'rpm',
+                cm3min: 'cm³/min'
+              });
             } else {
-              setMedidaCode(Constants.medida_imp);
+              setMedidaCode({
+                mm: 'in',
+                mmin: 'ft/min',
+                mmrev: 'in/rev',
+                mmmin: 'in/min',
+                rpm: 'rpm',
+                cm3min: 'in³/min'
+              });
             }
             break;
           case 'user-velocidad':
@@ -424,7 +441,73 @@ export default function BarrenadoScreen() {
         calcQ(D, parseFloat(textvf));
         break;
         
-      // Agregar más casos según sea necesario
+      case 3: // Velocidad de giro
+        calcVc(D, n);
+        if (lock !== 7) {
+          calcvf(fn, n);
+        }
+        calctc(pb, parseFloat(textvf), nb);
+        calcQ(D, parseFloat(textvf));
+        break;
+        
+      case 4: // Velocidad de corte
+        if (lock === 7) {
+          if (velocidadcode === 'n') {
+            calcN2(vf, fn);
+          } else {
+            calcN(D, Vc);
+          }
+        } else {
+          calcvf(fn, n);
+          calcN(D, Vc);
+        }
+        calctc(pb, parseFloat(textvf), nb);
+        calcQ(D, parseFloat(textvf));
+        break;
+        
+      case 5: // Avance por filo
+        if (lock === 7) {
+          if (velocidadcode === 'n') {
+            calcfn2(fz, z);
+          } else {
+            calcfn1(vf, n);
+          }
+        } else {
+          calcfn2(fz, z);
+          calcvf(parseFloat(textfn), n);
+        }
+        calctc(pb, parseFloat(textvf), nb);
+        calcQ(D, parseFloat(textvf));
+        break;
+        
+      case 6: // Avance por revolución
+        calcfz(fn, z);
+        if (lock !== 7) {
+          calcvf(fn, n);
+        }
+        calctc(pb, parseFloat(textvf), nb);
+        calcQ(D, parseFloat(textvf));
+        break;
+        
+      case 7: // Velocidad de avance
+        if (lock === 7) {
+          if (velocidadcode === 'n') {
+            calcN2(vf, fn);
+          } else {
+            calcfn1(vf, n);
+          }
+        }
+        calctc(pb, vf, nb);
+        calcQ(D, vf);
+        break;
+        
+      case 8: // Profundidad de barrenado
+        calctc(pb, vf, nb);
+        break;
+        
+      case 9: // Número de barrenos
+        calctc(pb, vf, nb);
+        break;
     }
   };
 
@@ -457,12 +540,18 @@ export default function BarrenadoScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <HeaderComponent 
-        title="Barrenado"
-        showBackButton={true}
-        showSecondButton={true}
-        onSecondButtonPress={() => router.push('/calculator/SettingsCalculadora' as any)}
-      />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Barrenado</Text>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => router.push('/calculator/SettingsCalculadoraScreen' as any)}
+        >
+          <Settings size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
 
       <Modal transparent={true} animationType="none" visible={showLoading}>
         <View style={styles.modalOverlay}>
@@ -496,7 +585,7 @@ export default function BarrenadoScreen() {
                     disabled={button === '.' && bPunto}
                   >
                     <LinearGradient
-                      colors={button === textoCa ? [Constants.colores.iconColor, Constants.colores.textColor] : ['#ffffff', '#dddddd']}
+                      colors={button === textoCa ? ['#54a2d9', '#264b9b'] : ['#ffffff', '#dddddd']}
                       style={styles.buttonGradient}
                     >
                       <Text style={[styles.calcText, button === textoCa && styles.clearButtonText]}>
@@ -511,12 +600,12 @@ export default function BarrenadoScreen() {
           
           <View style={styles.arrowButtons}>
             <TouchableOpacity style={styles.arrowButton} onPress={() => editarCampo('S')}>
-              <LinearGradient colors={[Constants.colores.iconColor, Constants.colores.textColor]} style={styles.buttonGradient}>
+              <LinearGradient colors={['#54a2d9', '#264b9b']} style={styles.buttonGradient}>
                 <ChevronUp size={24} color="#ffffff" />
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.arrowButton} onPress={() => editarCampo('B')}>
-              <LinearGradient colors={[Constants.colores.iconColor, Constants.colores.textColor]} style={styles.buttonGradient}>
+              <LinearGradient colors={['#54a2d9', '#264b9b']} style={styles.buttonGradient}>
                 <ChevronDown size={24} color="#ffffff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -532,22 +621,22 @@ export default function BarrenadoScreen() {
         >
           <Pressable onPress={() => textClick(null, 0)}>
             <View style={styles.logoContainer}>
-              <Text style={styles.logoText}>ELMEC</Text>
+              <Text style={styles.logoText}>ELMEC - Barrenado</Text>
             </View>
 
-            {renderInputField(t('barrenado:d'), textD, medidas.mm, 1, styles.inputContainerIngresan)}
-            {renderInputField(t('barrenado:z'), textZ, '', 2, styles.inputContainerIngresan)}
-            {renderInputField(t('barrenado:n'), textN, medidas.rpm, 3, styles.inputContainerAmbos)}
-            {renderInputField(t('barrenado:vc'), textVc, medidas.mmin, 4, styles.inputContainerAmbos)}
-            {renderInputField(t('barrenado:fz'), textfz, medidas.mm, 5, styles.inputContainerAmbos)}
-            {renderInputField(t('barrenado:fn'), textfn, medidas.mmrev, 6, styles.inputContainerAmbos)}
-            {renderInputField(t('barrenado:vf'), textvf, medidas.mmmin, 7, styles.inputContainerAmbos)}
-            {renderInputField(t('barrenado:pb'), textpb, medidas.mm, 8, styles.inputContainerIngresan)}
-            {renderInputField(t('barrenado:nb'), textnb, '', 9, styles.inputContainerIngresan)}
+            {renderInputField('Diámetro (D)', textD, medidas.mm, 1, styles.inputContainerIngresan)}
+            {renderInputField('Número de filos (Z)', textZ, '', 2, styles.inputContainerIngresan)}
+            {renderInputField('Velocidad de giro (N)', textN, medidas.rpm, 3, styles.inputContainerAmbos)}
+            {renderInputField('Velocidad de corte (Vc)', textVc, medidas.mmin, 4, styles.inputContainerAmbos)}
+            {renderInputField('Avance por filo (fz)', textfz, medidas.mm, 5, styles.inputContainerAmbos)}
+            {renderInputField('Avance por revolución (fn)', textfn, medidas.mmrev, 6, styles.inputContainerAmbos)}
+            {renderInputField('Velocidad de avance (Vf)', textvf, medidas.mmmin, 7, styles.inputContainerAmbos)}
+            {renderInputField('Profundidad de barrenado (Pb)', textpb, medidas.mm, 8, styles.inputContainerIngresan)}
+            {renderInputField('Número de barrenos (Nb)', textnb, '', 9, styles.inputContainerIngresan)}
             
             {/* Campos de solo lectura */}
             <View style={styles.viewRow}>
-              <Text style={styles.labelRow}>{t('barrenado:tc')}</Text>
+              <Text style={styles.labelRow}>Tiempo de corte (Tc)</Text>
               <View style={styles.inputContainerMuestran}>
                 <Text style={styles.labelInputText}>{texttc}</Text>
               </View>
@@ -555,7 +644,7 @@ export default function BarrenadoScreen() {
             </View>
 
             <View style={styles.viewRow}>
-              <Text style={styles.labelRow}>{t('barrenado:q')}</Text>
+              <Text style={styles.labelRow}>Tasa de remoción (Q)</Text>
               <View style={styles.inputContainerMuestran}>
                 <Text style={styles.labelInputText}>{textQ}</Text>
               </View>
@@ -572,6 +661,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e40af',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingTop: 60,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
+  },
+  settingsButton: {
+    padding: 8,
   },
   mainContainer: {
     flex: 1,
@@ -639,7 +748,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   logoText: {
-    fontSize: 24,
+    fontSize: 20,
     fontFamily: 'Inter-Bold',
     color: '#ffffff',
   },

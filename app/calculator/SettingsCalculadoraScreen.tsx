@@ -2,10 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { ScrollView, Text, Pressable, StyleSheet, View, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useTranslation } from 'react-i18next';
 import { useRouter } from 'expo-router';
-import { Check, Settings } from 'lucide-react-native';
-import HeaderComponent from '@/components/HeaderComponent';
+import { Check, Settings, ArrowLeft } from 'lucide-react-native';
 
 const MEDIDAS = [
   { code: 'mt', label: 'Métrico' },
@@ -18,7 +16,6 @@ const VELOCIDAD = [
 ];
 
 export default function SettingsCalculadoraScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const [selectedMedidaCode, setSelectedMedidaCode] = useState('mt');
   const [selectedVelocidadCode, setSelectedVelocidadCode] = useState('n');
@@ -51,19 +48,22 @@ export default function SettingsCalculadoraScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <HeaderComponent 
-        title="Configuración"
-        showBackButton={true}
-      />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Configuración</Text>
+        <View style={styles.placeholder} />
+      </View>
       
       <ScrollView style={styles.content}>
         <TouchableOpacity style={styles.mainButton} onPress={() => router.back()}>
           <Settings size={24} color="#1e40af" />
-          <Text style={styles.mainButtonText}>{t('settings:ajustes')}</Text>
+          <Text style={styles.mainButtonText}>Ajustes</Text>
         </TouchableOpacity>
 
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('settings:medida')}:</Text>
+          <Text style={styles.sectionHeader}>Unidad de Medida:</Text>
           {MEDIDAS.map(medida => (
             <Pressable
               key={medida.code}
@@ -87,7 +87,7 @@ export default function SettingsCalculadoraScreen() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionHeader}>{t('settings:velocidad')}:</Text>
+          <Text style={styles.sectionHeader}>Velocidad:</Text>
           {VELOCIDAD.map(velocidad => (
             <Pressable
               key={velocidad.code}
@@ -118,6 +118,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e40af',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingTop: 60,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
+  },
+  placeholder: {
+    width: 40,
   },
   content: {
     flex: 1,

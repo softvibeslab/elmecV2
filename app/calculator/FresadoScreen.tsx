@@ -12,21 +12,24 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import { ChevronUp, ChevronDown } from 'lucide-react-native';
-import HeaderComponent from '@/components/HeaderComponent';
-import * as Constants from '@/constants/calculator';
+import { ChevronUp, ChevronDown, ArrowLeft, Settings } from 'lucide-react-native';
 
 export default function FresadoScreen() {
-  const { t } = useTranslation();
   const router = useRouter();
   const { width, height } = Dimensions.get('window');
   
   const [showLoading, setShowLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('');
-  const [medidas, setMedidaCode] = useState(Constants.medida_mt);
+  const [medidas, setMedidaCode] = useState({
+    mm: 'mm',
+    mmin: 'm/min',
+    mmrev: 'mm/rev',
+    mmmin: 'mm/min',
+    rpm: 'rpm',
+    cm3min: 'cm³/min'
+  });
   const [velocidadcode, setVelocidadCode] = useState('n');
   
   const [editable, setEditable] = useState(0);
@@ -80,9 +83,23 @@ export default function FresadoScreen() {
         switch (key) {
           case 'user-medida':
             if (value === 'mt') {
-              setMedidaCode(Constants.medida_mt);
+              setMedidaCode({
+                mm: 'mm',
+                mmin: 'm/min',
+                mmrev: 'mm/rev',
+                mmmin: 'mm/min',
+                rpm: 'rpm',
+                cm3min: 'cm³/min'
+              });
             } else {
-              setMedidaCode(Constants.medida_imp);
+              setMedidaCode({
+                mm: 'in',
+                mmin: 'ft/min',
+                mmrev: 'in/rev',
+                mmmin: 'in/min',
+                rpm: 'rpm',
+                cm3min: 'in³/min'
+              });
             }
             break;
           case 'user-velocidad':
@@ -448,12 +465,18 @@ export default function FresadoScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <HeaderComponent 
-        title="Fresado"
-        showBackButton={true}
-        showSecondButton={true}
-        onSecondButtonPress={() => router.push('/calculator/SettingsCalculadora' as any)}
-      />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <ArrowLeft size={24} color="#ffffff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Fresado</Text>
+        <TouchableOpacity 
+          style={styles.settingsButton}
+          onPress={() => router.push('/calculator/SettingsCalculadoraScreen' as any)}
+        >
+          <Settings size={24} color="#ffffff" />
+        </TouchableOpacity>
+      </View>
 
       <Modal transparent={true} animationType="none" visible={showLoading}>
         <View style={styles.modalOverlay}>
@@ -487,7 +510,7 @@ export default function FresadoScreen() {
                     disabled={button === '.' && bPunto}
                   >
                     <LinearGradient
-                      colors={button === textoCa ? [Constants.colores.iconColor, Constants.colores.textColor] : ['#ffffff', '#dddddd']}
+                      colors={button === textoCa ? ['#54a2d9', '#264b9b'] : ['#ffffff', '#dddddd']}
                       style={styles.buttonGradient}
                     >
                       <Text style={[styles.calcText, button === textoCa && styles.clearButtonText]}>
@@ -502,12 +525,12 @@ export default function FresadoScreen() {
           
           <View style={styles.arrowButtons}>
             <TouchableOpacity style={styles.arrowButton} onPress={() => editarCampo('S')}>
-              <LinearGradient colors={[Constants.colores.iconColor, Constants.colores.textColor]} style={styles.buttonGradient}>
+              <LinearGradient colors={['#54a2d9', '#264b9b']} style={styles.buttonGradient}>
                 <ChevronUp size={24} color="#ffffff" />
               </LinearGradient>
             </TouchableOpacity>
             <TouchableOpacity style={styles.arrowButton} onPress={() => editarCampo('B')}>
-              <LinearGradient colors={[Constants.colores.iconColor, Constants.colores.textColor]} style={styles.buttonGradient}>
+              <LinearGradient colors={['#54a2d9', '#264b9b']} style={styles.buttonGradient}>
                 <ChevronDown size={24} color="#ffffff" />
               </LinearGradient>
             </TouchableOpacity>
@@ -526,21 +549,21 @@ export default function FresadoScreen() {
               <Text style={styles.logoText}>ELMEC - Fresado</Text>
             </View>
 
-            {renderInputField(t('fresado:d'), textD, medidas.mm, 1, styles.inputContainerIngresan)}
-            {renderInputField(t('fresado:z'), textZ, '', 2, styles.inputContainerIngresan)}
-            {renderInputField(t('fresado:n'), textN, medidas.rpm, 3, styles.inputContainerAmbos)}
-            {renderInputField(t('fresado:vc'), textVc, medidas.mmin, 4, styles.inputContainerAmbos)}
-            {renderInputField(t('fresado:fz'), textfz, medidas.mm, 5, styles.inputContainerAmbos)}
-            {renderInputField(t('fresado:fn'), textfn, medidas.mmrev, 6, styles.inputContainerAmbos)}
-            {renderInputField(t('fresado:vf'), textvf, medidas.mmmin, 7, styles.inputContainerAmbos)}
-            {renderInputField(t('fresado:ap'), textap, medidas.mm, 8, styles.inputContainerIngresan)}
-            {renderInputField(t('fresado:ae'), textae, medidas.mm, 9, styles.inputContainerIngresan)}
-            {renderInputField(t('fresado:np'), textnp, '', 10, styles.inputContainerIngresan)}
-            {renderInputField(t('fresado:lm'), textlm, medidas.mm, 11, styles.inputContainerIngresan)}
+            {renderInputField('Diámetro (D)', textD, medidas.mm, 1, styles.inputContainerIngresan)}
+            {renderInputField('Número de filos (Z)', textZ, '', 2, styles.inputContainerIngresan)}
+            {renderInputField('Velocidad de giro (N)', textN, medidas.rpm, 3, styles.inputContainerAmbos)}
+            {renderInputField('Velocidad de corte (Vc)', textVc, medidas.mmin, 4, styles.inputContainerAmbos)}
+            {renderInputField('Avance por filo (fz)', textfz, medidas.mm, 5, styles.inputContainerAmbos)}
+            {renderInputField('Avance por revolución (fn)', textfn, medidas.mmrev, 6, styles.inputContainerAmbos)}
+            {renderInputField('Velocidad de avance (Vf)', textvf, medidas.mmmin, 7, styles.inputContainerAmbos)}
+            {renderInputField('Profundidad axial (ap)', textap, medidas.mm, 8, styles.inputContainerIngresan)}
+            {renderInputField('Profundidad radial (ae)', textae, medidas.mm, 9, styles.inputContainerIngresan)}
+            {renderInputField('Número de pasadas (Np)', textnp, '', 10, styles.inputContainerIngresan)}
+            {renderInputField('Longitud de maquinado (Lm)', textlm, medidas.mm, 11, styles.inputContainerIngresan)}
             
             {/* Campos de solo lectura */}
             <View style={styles.viewRow}>
-              <Text style={styles.labelRow}>{t('fresado:tc')}</Text>
+              <Text style={styles.labelRow}>Tiempo de corte (Tc)</Text>
               <View style={styles.inputContainerMuestran}>
                 <Text style={styles.labelInputText}>{texttc}</Text>
               </View>
@@ -548,7 +571,7 @@ export default function FresadoScreen() {
             </View>
 
             <View style={styles.viewRow}>
-              <Text style={styles.labelRow}>{t('fresado:q')}</Text>
+              <Text style={styles.labelRow}>Tasa de remoción (Q)</Text>
               <View style={styles.inputContainerMuestran}>
                 <Text style={styles.labelInputText}>{textQ}</Text>
               </View>
@@ -565,6 +588,26 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f9fafb',
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#1e40af',
+    paddingHorizontal: 24,
+    paddingVertical: 16,
+    paddingTop: 60,
+  },
+  backButton: {
+    padding: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#ffffff',
+  },
+  settingsButton: {
+    padding: 8,
   },
   mainContainer: {
     flex: 1,
